@@ -8,16 +8,20 @@ import StudentDashboard from './components/StudentDashboard';
 import AddStudent from './components/AddStudent';
 import Analytics from './components/Analytics';
 import Report from './components/Report';
+import Subjects from './components/Subjects';
+import Timetable from './components/Timetable';
+import AllStudents from './components/AllStudents';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
 
   const handleLogin = (loginData) => {
-    // Simulate authentication
     setIsAuthenticated(true);
     setUserRole(loginData.role);
+    setCredentials({ username: loginData.username, password: loginData.password });
   };
 
   const handleLogout = () => {
@@ -34,32 +38,32 @@ const App = () => {
     if (userRole === 'teacher') {
       switch (activeMenuItem) {
         case 'dashboard':
-          return <TeacherDashboard />;
+          return <TeacherDashboard credentials={credentials} />;
         case 'add-student':
-          return <AddStudent />;
+          return <AddStudent credentials={credentials} />;
         case 'analytics':
-          return <Analytics />;
+          return <Analytics credentials={credentials} userRole={userRole} />;
         case 'reports':
-          return <Report />;
+          return <Report credentials={credentials} userRole={userRole} />;
         case 'students':
-          return <div className="p-6"><h2 className="text-2xl font-bold">All Students</h2><p className="text-gray-600">Student management page would go here</p></div>;
+          return <AllStudents credentials={credentials} />;
         default:
-          return <TeacherDashboard />;
+          return <TeacherDashboard credentials={credentials} />;
       }
     } else if (userRole === 'student') {
       switch (activeMenuItem) {
         case 'dashboard':
-          return <StudentDashboard />;
+          return <StudentDashboard credentials={credentials} />;
         case 'analytics':
-          return <Analytics />;
+          return <Analytics credentials={credentials} userRole={userRole} />;
         case 'reports':
-          return <Report />;
+          return <Report credentials={credentials} userRole={userRole} />;
         case 'subjects':
-          return <div className="p-6"><h2 className="text-2xl font-bold">Subjects</h2><p className="text-gray-600">Subject details would go here</p></div>;
+          return <Subjects credentials={credentials} />;
         case 'calendar':
-          return <div className="p-6"><h2 className="text-2xl font-bold">Calendar</h2><p className="text-gray-600">Academic calendar would go here</p></div>;
+          return <Timetable credentials={credentials} />;
         default:
-          return <StudentDashboard />;
+          return <StudentDashboard credentials={credentials} />;
       }
     }
     return null;

@@ -1,279 +1,496 @@
-import React from 'react';
-import { User, Download, Printer, CheckCircle, XCircle, TrendingUp, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Download, Printer, CheckCircle, XCircle, TrendingUp, Calendar, Plus, Save } from 'lucide-react';
 import StudentTable from './StudentTable';
+import { getAllStudents, createReport } from '../services/api';
 
-const Report = () => {
-  // Student information
-  const studentInfo = {
-    name: 'John Smith',
-    rollNo: '2024001',
-    class: '10-A',
-    overallPercentage: '82.8%',
-    grade: 'B+',
-    academicYear: '2023-2024'
-  };
+const Report = ({ credentials, userRole }) => {
+  const [view, setView] = useState('list'); // 'list', 'add', 'view'
+  const [students, setStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Detailed marks data
-  const detailedMarks = [
-    {
-      subject: 'Mathematics',
-      midterm: 75,
-      final: 82,
-      assignment: 78,
-      practical: 80,
-      total: 78.75,
-      grade: 'B+'
-    },
-    {
-      subject: 'Science',
-      midterm: 78,
-      final: 85,
-      assignment: 82,
-      practical: 88,
-      total: 83.25,
-      grade: 'B+'
-    },
-    {
-      subject: 'English',
-      midterm: 82,
-      final: 88,
-      assignment: 85,
-      practical: 85,
-      total: 85.0,
-      grade: 'B+'
-    },
-    {
-      subject: 'Computer Science',
-      midterm: 90,
-      final: 95,
-      assignment: 92,
-      practical: 98,
-      total: 93.75,
-      grade: 'A'
-    },
-    {
-      subject: 'History',
-      midterm: 76,
-      final: 80,
-      assignment: 78,
-      practical: 82,
-      total: 79.0,
-      grade: 'B'
-    },
-    {
-      subject: 'Geography',
-      midterm: 79,
-      final: 83,
-      assignment: 80,
-      practical: 82,
-      total: 81.0,
-      grade: 'B+'
+  // Teacher: Form state for adding report
+  const [reportForm, setReportForm] = useState({
+    studentId: '',
+    name: '',
+    rollNo: '',
+    class: '',
+    academicYear: '2024-2025',
+    overallPercentage: '',
+    grade: '',
+    subjects: []
+  });
+
+  // Student: Report data
+  const [reportData, setReportData] = useState(null);
+
+  useEffect(() => {
+    if (userRole === 'teacher') {
+      fetchStudents();
+    } else {
+      fetchStudentReport();
     }
-  ];
+  }, [userRole, credentials]);
 
-  // Strengths and areas for improvement
-  const strengths = [
-    'Strong in Computer Science with 93.75% average',
-    'Good attendance record (85% overall)',
-    'Consistent performance across subjects',
-    'Excellent practical skills',
-    'Active participation in class activities'
-  ];
-
-  const improvements = [
-    'Needs improvement in Mathematics (78.75% - below target)',
-    'Low participation in Science practical sessions',
-    'Could improve assignment scores',
-    'Better time management needed for exams',
-    'Focus on weak areas identified in assessments'
-  ];
-
-  // Table columns for detailed marks
-  const marksColumns = [
-    { key: 'subject', label: 'Subject' },
-    { key: 'midterm', label: 'Midterm' },
-    { key: 'final', label: 'Final' },
-    { key: 'assignment', label: 'Assignment' },
-    { key: 'practical', label: 'Practical' },
-    { key: 'total', label: 'Total' },
-    { 
-      key: 'grade', 
-      label: 'Grade',
-      render: (value) => (
-        <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
-          value === 'A' ? 'bg-green-100 text-green-700' :
-          value === 'B+' ? 'bg-blue-100 text-blue-700' :
-          'bg-yellow-100 text-yellow-700'
-        }`}>
-          {value}
-        </span>
-      )
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const data = await getAllStudents(credentials.username, credentials.password);
+      setStudents(data);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const handleDownloadPDF = () => {
-    // Simulate PDF generation
-    alert('PDF report generation would be implemented here with a library like jsPDF');
   };
 
-  const handlePrint = () => {
-    window.print();
+  const fetchStudentReport = async () => {
+    // This will call backend API when implemented
+    console.log('Fetching student report...');
   };
 
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Page Title */}
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Academic Report</h1>
-          <p className="text-gray-600 mt-2">Comprehensive student performance report</p>
+  const handleAddSubject = () => {
+    setReportForm({
+      ...reportForm,
+      subjects: [
+        ...reportForm.subjects,
+        { subject: '', midterm: '', final: '', assignment: '', practical: '', total: '', grade: '' }
+      ]
+    });
+  };
+
+  const handleSubjectChange = (index, field, value) => {
+    const updatedSubjects = [...reportForm.subjects];
+    updatedSubjects[index][field] = value;
+    
+    // Calculate total
+    if (field !== 'total') {
+      const midterm = parseFloat(updatedSubjects[index].midterm) || 0;
+      const final = parseFloat(updatedSubjects[index].final) || 0;
+      const assignment = parseFloat(updatedSubjects[index].assignment) || 0;
+      const practical = parseFloat(updatedSubjects[index].practical) || 0;
+      updatedSubjects[index].total = ((midterm + final + assignment + practical) / 4).toFixed(2);
+    }
+    
+    setReportForm({ ...reportForm, subjects: updatedSubjects });
+  };
+
+  const handleRemoveSubject = (index) => {
+    const updatedSubjects = reportForm.subjects.filter((_, i) => i !== index);
+    setReportForm({ ...reportForm, subjects: updatedSubjects });
+  };
+
+  const handleStudentSelect = (student) => {
+    setSelectedStudent(student);
+    setReportForm({
+      ...reportForm,
+      studentId: student.id,
+      name: `${student.firstName} ${student.lastName}`,
+      rollNo: student.studentId,
+      class: student.department,
+      academicYear: student.admissionYear + '-' + (student.admissionYear + 1)
+    });
+  };
+
+  const handleSubmitReport = async () => {
+    setLoading(true);
+    try {
+      // Map form data to backend DTO format
+      const reportData = {
+        studentId: reportForm.studentId,
+        name: reportForm.name,
+        rollNo: reportForm.rollNo,
+        classSection: reportForm.class,
+        academicYear: reportForm.academicYear,
+        overallPercentage: reportForm.overallPercentage,
+        grade: reportForm.grade,
+        subjects: reportForm.subjects.map(subject => ({
+          subject: subject.subject,
+          midterm: parseFloat(subject.midterm) || 0,
+          final: parseFloat(subject.final) || 0,
+          assignment: parseFloat(subject.assignment) || 0,
+          practical: parseFloat(subject.practical) || 0,
+          total: parseFloat(subject.total) || 0,
+          grade: subject.grade
+        }))
+      };
+
+      const result = await createReport(credentials.username, credentials.password, reportData);
+      if (result) {
+        alert('Report saved successfully!');
+        setView('list');
+        setReportForm({
+          studentId: '',
+          name: '',
+          rollNo: '',
+          class: '',
+          academicYear: '2024-2025',
+          overallPercentage: '',
+          grade: '',
+          subjects: []
+        });
+      } else {
+        alert('Failed to save report. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving report:', error);
+      alert('Error saving report. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Teacher view: List students to create report for
+  if (userRole === 'teacher' && view === 'list') {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Student Reports</h1>
+          <p className="text-gray-600 mt-2">Select a student to create or view their report</p>
         </div>
-        <div className="flex space-x-3">
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading students...</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            {students.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No students available</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Semester</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {students.map((student) => (
+                      <tr key={student.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {student.firstName} {student.lastName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{student.studentId}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{student.department}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{student.semester}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => {
+                              handleStudentSelect(student);
+                              setView('add');
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900 font-medium"
+                          >
+                            Create Report
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Teacher view: Add report form
+  if (userRole === 'teacher' && view === 'add') {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="mb-8">
+          <button
+            onClick={() => setView('list')}
+            className="text-indigo-600 hover:text-indigo-800 mb-4"
+          >
+            ← Back to Students
+          </button>
+          <h1 className="text-3xl font-bold text-gray-800">Create Report</h1>
+          <p className="text-gray-600 mt-2">Add performance report for {reportForm.name}</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={reportForm.name}
+                onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Roll No</label>
+              <input
+                type="text"
+                value={reportForm.rollNo}
+                onChange={(e) => setReportForm({ ...reportForm, rollNo: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+              <input
+                type="text"
+                value={reportForm.class}
+                onChange={(e) => setReportForm({ ...reportForm, class: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+              <input
+                type="text"
+                value={reportForm.academicYear}
+                onChange={(e) => setReportForm({ ...reportForm, academicYear: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Overall Percentage</label>
+              <input
+                type="text"
+                value={reportForm.overallPercentage}
+                onChange={(e) => setReportForm({ ...reportForm, overallPercentage: e.target.value })}
+                placeholder="e.g., 82.8%"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
+              <select
+                value={reportForm.grade}
+                onChange={(e) => setReportForm({ ...reportForm, grade: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              >
+                <option value="">Select Grade</option>
+                <option value="A">A</option>
+                <option value="B+">B+</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Subject Marks</h3>
+              <button
+                onClick={handleAddSubject}
+                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Subject
+              </button>
+            </div>
+
+            {reportForm.subjects.map((subject, index) => (
+              <div key={index} className="bg-gray-50 p-4 rounded-lg mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <input
+                      type="text"
+                      value={subject.subject}
+                      onChange={(e) => handleSubjectChange(index, 'subject', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Midterm</label>
+                    <input
+                      type="number"
+                      value={subject.midterm}
+                      onChange={(e) => handleSubjectChange(index, 'midterm', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Final</label>
+                    <input
+                      type="number"
+                      value={subject.final}
+                      onChange={(e) => handleSubjectChange(index, 'final', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assignment</label>
+                    <input
+                      type="number"
+                      value={subject.assignment}
+                      onChange={(e) => handleSubjectChange(index, 'assignment', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Practical</label>
+                    <input
+                      type="number"
+                      value={subject.practical}
+                      onChange={(e) => handleSubjectChange(index, 'practical', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                    <input
+                      type="text"
+                      value={subject.total}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
+                    <select
+                      value={subject.grade}
+                      onChange={(e) => handleSubjectChange(index, 'grade', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Select</option>
+                      <option value="A">A</option>
+                      <option value="B+">B+</option>
+                      <option value="B">B</option>
+                      <option value="C">C</option>
+                      <option value="F">F</option>
+                    </select>
+                  </div>
+                </div>
+                {reportForm.subjects.length > 1 && (
+                  <button
+                    onClick={() => handleRemoveSubject(index)}
+                    className="mt-2 text-red-600 hover:text-red-800 text-sm"
+                  >
+                    Remove Subject
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <button
+              onClick={() => setView('list')}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitReport}
+              className="flex items-center px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Report
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Student view: Display their report
+  if (userRole === 'student') {
+    if (!reportData) {
+      return (
+        <div className="p-6 bg-gray-50 min-h-screen">
+          <div className="text-center py-12">
+            <p className="text-gray-500">No report available yet. Please contact your teacher.</p>
+          </div>
+        </div>
+      );
+    }
+
+    const marksColumns = [
+      { key: 'subject', label: 'Subject' },
+      { key: 'midterm', label: 'Midterm' },
+      { key: 'final', label: 'Final' },
+      { key: 'assignment', label: 'Assignment' },
+      { key: 'practical', label: 'Practical' },
+      { key: 'total', label: 'Total' },
+      { 
+        key: 'grade', 
+        label: 'Grade',
+        render: (value) => (
+          <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+            value === 'A' ? 'bg-green-100 text-green-700' :
+            value === 'B+' ? 'bg-blue-100 text-blue-700' :
+            'bg-yellow-100 text-yellow-700'
+          }`}>
+            {value}
+          </span>
+        )
+      }
+    ];
+
+    const handlePrint = () => {
+      window.print();
+    };
+
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Academic Report</h1>
+            <p className="text-gray-600 mt-2">Your performance report</p>
+          </div>
           <button
             onClick={handlePrint}
-            className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
           >
             <Printer className="h-4 w-4 mr-2" />
             Print
           </button>
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
-          </button>
         </div>
-      </div>
 
-      {/* Student Info Card */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="bg-indigo-600 p-4 rounded-full mr-4">
-              <User className="h-8 w-8 text-white" />
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-indigo-600 p-4 rounded-full mr-4">
+                <User className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">{reportData.name}</h2>
+                <p className="text-gray-600">
+                  Roll No: {reportData.rollNo} | Class: {reportData.class} | 
+                  Academic Year: {reportData.academicYear}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">{studentInfo.name}</h2>
-              <p className="text-gray-600">
-                Roll No: {studentInfo.rollNo} | Class: {studentInfo.class} | 
-                Academic Year: {studentInfo.academicYear}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="bg-gradient-to-r from-green-500 to-blue-600 text-white px-6 py-3 rounded-lg">
-              <p className="text-sm">Overall Performance</p>
-              <p className="text-2xl font-bold">{studentInfo.overallPercentage}</p>
-              <p className="text-lg">Grade: {studentInfo.grade}</p>
+            <div className="text-right">
+              <div className="bg-gradient-to-r from-green-500 to-blue-600 text-white px-6 py-3 rounded-lg">
+                <p className="text-sm">Overall Performance</p>
+                <p className="text-2xl font-bold">{reportData.overallPercentage}</p>
+                <p className="text-lg">Grade: {reportData.grade}</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Detailed Marks Table */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Detailed Marks Breakdown</h3>
-        <StudentTable data={detailedMarks} columns={marksColumns} />
-        
-        {/* Summary Statistics */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-600">Average Score</p>
-            <p className="text-xl font-bold text-blue-700">82.8%</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-600">Highest Score</p>
-            <p className="text-xl font-bold text-green-700">93.75%</p>
-            <p className="text-xs text-gray-500">Computer Science</p>
-          </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-600">Lowest Score</p>
-            <p className="text-xl font-bold text-yellow-700">78.75%</p>
-            <p className="text-xs text-gray-500">Mathematics</p>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-600">Total Subjects</p>
-            <p className="text-xl font-bold text-purple-700">6</p>
-            <p className="text-xs text-gray-500">All passed</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Strengths and Areas for Improvement */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Strengths */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-            Strengths
-          </h3>
-          <ul className="space-y-3">
-            {strengths.map((strength, index) => (
-              <li key={index} className="flex items-start">
-                <span className="text-green-600 mr-2 mt-1">✔</span>
-                <span className="text-gray-700">{strength}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Areas for Improvement */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <XCircle className="h-5 w-5 text-red-600 mr-2" />
-            Areas for Improvement
-          </h3>
-          <ul className="space-y-3">
-            {improvements.map((improvement, index) => (
-              <li key={index} className="flex items-start">
-                <span className="text-red-600 mr-2 mt-1">❌</span>
-                <span className="text-gray-700">{improvement}</span>
-              </li>
-            ))}
-          </ul>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Detailed Marks Breakdown</h3>
+          <StudentTable data={reportData.subjects} columns={marksColumns} />
         </div>
       </div>
+    );
+  }
 
-      {/* Recommendations */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-          <TrendingUp className="h-5 w-5 text-indigo-600 mr-2" />
-          Recommendations
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-indigo-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-indigo-800 mb-2">Academic Focus</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• Extra practice in Mathematics</li>
-              <li>• Join study groups for weak subjects</li>
-              <li>• Regular revision schedule</li>
-            </ul>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-green-800 mb-2">Skill Development</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• Continue excellence in Computer Science</li>
-              <li>• Improve practical skills</li>
-              <li>• Participate in competitions</li>
-            </ul>
-          </div>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-blue-800 mb-2">Personal Growth</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• Time management workshops</li>
-              <li>• Improve class participation</li>
-              <li>• Set realistic academic goals</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Report Footer */}
-      <div className="mt-8 text-center text-sm text-gray-500">
-        <p>This report was generated on {new Date().toLocaleDateString()}</p>
-        <p>For any queries, please contact the academic office</p>
-      </div>
+  // Fallback
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <p>Loading...</p>
     </div>
   );
 };

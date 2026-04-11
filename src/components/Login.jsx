@@ -1,26 +1,42 @@
 import React, { useState } from 'react';
 import { GraduationCap, User, Lock, Mail } from 'lucide-react';
+import { authenticate } from '../services/api';
 
 const Login = ({ onLogin }) => {
   const [role, setRole] = useState('');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const validateForm = () => {
     const newErrors = {};
     if (!role) newErrors.role = 'Please select a role';
-    if (!email) newErrors.email = 'Email is required';
+    if (!username) newErrors.username = 'Username is required';
     if (!password) newErrors.password = 'Password is required';
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const formErrors = validateForm();
     if (Object.keys(formErrors).length === 0) {
-      onLogin({ role, email, password });
+      setLoading(true);
+      setApiError('');
+      
+      const result = await authenticate(username, password);
+      
+      setLoading(false);
+      
+      if (result.success) {
+        // Use the role from backend or fallback to selected role
+        const finalRole = result.role || role;
+        onLogin({ role: finalRole, username, password, user: result.user });
+      } else {
+        setApiError(result.error || 'Authentication failed');
+      }
     } else {
       setErrors(formErrors);
     }
@@ -77,20 +93,20 @@ const Login = ({ onLogin }) => {
             {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role}</p>}
           </div>
 
-          {/* Email Input */}
+          {/* Username Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Enter your email"
+                placeholder="Enter your username"
               />
             </div>
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
           </div>
 
           {/* Password Input */}
@@ -125,12 +141,20 @@ const Login = ({ onLogin }) => {
             </a>
           </div>
 
+          {/* API Error */}
+          {apiError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {apiError}
+            </div>
+          )}
+
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:bg-indigo-400 disabled:cursor-not-allowed"
           >
-            Sign In
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { UserPlus, Save, RotateCcw } from 'lucide-react';
-import { createStudent } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Save, RotateCcw, ArrowLeft } from 'lucide-react';
+import { updateStudent, getAllStudents } from '../services/api';
 
-const AddStudent = ({ credentials }) => {
+const EditStudent = ({ credentials, studentId, onBack }) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -16,6 +16,30 @@ const AddStudent = ({ credentials }) => {
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchStudentData();
+  }, [studentId, credentials]);
+
+  const fetchStudentData = async () => {
+    try {
+      const students = await getAllStudents(credentials.username, credentials.password);
+      const student = students.find(s => s.id === studentId);
+      if (student) {
+        setFormData({
+          firstName: student.firstName || '',
+          lastName: student.lastName || '',
+          studentId: student.studentId || '',
+          department: student.department || '',
+          email: student.email || '',
+          admissionYear: student.admissionYear || new Date().getFullYear(),
+          semester: student.semester || 'Fall'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -37,14 +61,7 @@ const AddStudent = ({ credentials }) => {
       ...prev,
       [name]: value
     }));
-    
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
+    setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -54,19 +71,19 @@ const AddStudent = ({ credentials }) => {
     if (Object.keys(formErrors).length === 0) {
       setLoading(true);
       try {
-        const result = await createStudent(credentials.username, credentials.password, formData);
+        const result = await updateStudent(credentials.username, credentials.password, studentId, formData);
         if (result) {
           setShowSuccess(true);
           setTimeout(() => {
-            handleReset();
             setShowSuccess(false);
+            onBack();
           }, 2000);
         } else {
-          setErrors({ submit: 'Failed to create student. Please try again.' });
+          alert('Failed to update student. Please try again.');
         }
       } catch (error) {
-        console.error('Error creating student:', error);
-        setErrors({ submit: 'Failed to create student. Please try again.' });
+        console.error('Error updating student:', error);
+        alert('Failed to update student. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -76,15 +93,7 @@ const AddStudent = ({ credentials }) => {
   };
 
   const handleReset = () => {
-    setFormData({
-      firstName: '',
-      lastName: '',
-      studentId: '',
-      department: '',
-      email: '',
-      admissionYear: new Date().getFullYear(),
-      semester: 'Fall'
-    });
+    fetchStudentData();
     setErrors({});
   };
 
@@ -92,20 +101,20 @@ const AddStudent = ({ credentials }) => {
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Page Title */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Add Student</h1>
-        <p className="text-gray-600 mt-2">Enter student information and academic details</p>
+        <button
+          onClick={onBack}
+          className="flex items-center text-indigo-600 hover:text-indigo-800 mb-4"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Back to Student List
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">Edit Student</h1>
+        <p className="text-gray-600 mt-2">Update student information and academic details</p>
       </div>
 
-      {/* Success Message */}
       {showSuccess && (
-        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-          <p className="font-medium">✓ Student created successfully!</p>
-        </div>
-      )}
-
-      {errors.submit && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          <p className="font-medium">{errors.submit}</p>
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-green-800 font-medium">Student updated successfully!</p>
         </div>
       )}
 
@@ -168,6 +177,7 @@ const AddStudent = ({ credentials }) => {
                     errors.studentId ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter student ID (e.g., STU003)"
+                  disabled
                 />
                 {errors.studentId && (
                   <p className="text-red-500 text-xs mt-1">{errors.studentId}</p>
@@ -272,10 +282,19 @@ const AddStudent = ({ credentials }) => {
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
+              className="flex items-center px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Creating...' : 'Save'}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Update Student
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -284,4 +303,4 @@ const AddStudent = ({ credentials }) => {
   );
 };
 
-export default AddStudent;
+export default EditStudent;

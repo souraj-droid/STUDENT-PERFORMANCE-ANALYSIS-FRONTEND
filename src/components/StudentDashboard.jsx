@@ -1,120 +1,106 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { User, Award, TrendingUp, TrendingDown, BookOpen, Target } from 'lucide-react';
 import StudentTable from './StudentTable';
+import { getStudentProfile, getStudentPerformances, getStudentGPA, getStudentAnalyticsSummary } from '../services/api';
 
-const StudentDashboard = () => {
-  // Student profile data
-  const studentProfile = {
-    name: 'John Smith',
-    rollNo: '2024001',
-    class: '10-A',
-    overallGrade: 'B+',
-    attendance: '85%'
+const StudentDashboard = ({ credentials }) => {
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [performances, setPerformances] = useState([]);
+  const [gpa, setGpa] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, [credentials]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Use student ID from credentials (e.g., STU001 -> 1)
+      const studentId = parseInt(credentials.username.replace('STU', '')) || 1;
+      
+      const [profileData, performancesData, gpaData, analyticsData] = await Promise.all([
+        getStudentProfile(credentials.username, credentials.password, studentId),
+        getStudentPerformances(credentials.username, credentials.password, studentId),
+        getStudentGPA(credentials.username, credentials.password, studentId),
+        getStudentAnalyticsSummary(credentials.username, credentials.password, studentId)
+      ]);
+      
+      setStudentProfile(profileData);
+      setPerformances(performancesData);
+      setGpa(gpaData);
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Academic overview cards data
   const academicOverview = [
     {
       title: 'Total Subjects',
-      value: '6',
+      value: performances.length || '0',
       icon: BookOpen,
       color: 'bg-blue-500'
     },
     {
-      title: 'Highest Score',
-      value: '92%',
+      title: 'GPA',
+      value: gpa?.gpa ? gpa.gpa.toFixed(2) : 'N/A',
       icon: TrendingUp,
       color: 'bg-green-500'
     },
     {
-      title: 'Lowest Score',
-      value: '78%',
+      title: 'Credits',
+      value: gpa?.totalCredits || '0',
       icon: TrendingDown,
       color: 'bg-red-500'
     },
     {
-      title: 'Class Rank',
-      value: '#12',
+      title: 'Average Score',
+      value: analytics?.averageScore ? `${Math.round(analytics.averageScore)}%` : 'N/A',
       icon: Award,
       color: 'bg-purple-500'
     }
   ];
 
-  // Sample marks data
-  const marksData = [
-    {
-      subject: 'Mathematics',
-      marks: 78,
-      grade: 'B',
-      attendance: '88%',
-      status: 'Pass'
-    },
-    {
-      subject: 'Science',
-      marks: 82,
-      grade: 'B+',
-      attendance: '92%',
-      status: 'Pass'
-    },
-    {
-      subject: 'English',
-      marks: 85,
-      grade: 'B+',
-      attendance: '90%',
-      status: 'Pass'
-    },
-    {
-      subject: 'Computer Science',
-      marks: 92,
-      grade: 'A',
-      attendance: '95%',
-      status: 'Pass'
-    },
-    {
-      subject: 'History',
-      marks: 79,
-      grade: 'B',
-      attendance: '85%',
-      status: 'Pass'
-    },
-    {
-      subject: 'Geography',
-      marks: 81,
-      grade: 'B+',
-      attendance: '87%',
-      status: 'Pass'
-    }
-  ];
+  // Marks data from backend
+  const marksData = performances.map(perf => ({
+    subject: perf.courseName || 'Unknown',
+    marks: perf.score || 0,
+    grade: perf.grade || 'N/A',
+    attendance: 'N/A',
+    status: perf.grade === 'F' ? 'Fail' : 'Pass'
+  }));
 
-  // Performance trend data
-  const performanceTrend = [
-    { month: 'Jan', score: 72 },
-    { month: 'Feb', score: 75 },
-    { month: 'Mar', score: 78 },
-    { month: 'Apr', score: 76 },
-    { month: 'May', score: 80 },
-    { month: 'Jun', score: 82 }
-  ];
-
-  // Table columns configuration
+  // Columns for marks table
   const marksColumns = [
-    { key: 'subject', label: 'Subject' },
-    { key: 'marks', label: 'Marks' },
-    { key: 'grade', label: 'Grade' },
-    { key: 'attendance', label: 'Attendance' },
-    { 
-      key: 'status', 
-      label: 'Status',
-      render: (value) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          value === 'Pass' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-        }`}>
-          {value}
-        </span>
-      )
-    }
+    { key: 'subject', header: 'Subject' },
+    { key: 'marks', header: 'Marks' },
+    { key: 'grade', header: 'Grade' },
+    { key: 'attendance', header: 'Attendance' },
+    { key: 'status', header: 'Status' }
   ];
+
+  // Performance trend data from actual performances
+  const performanceTrend = performances.map((perf, index) => ({
+    subject: perf.courseName || `Subject ${index + 1}`,
+    score: perf.score || 0
+  }));
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -132,16 +118,16 @@ const StudentDashboard = () => {
               <User className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">{studentProfile.name}</h2>
-              <p className="text-gray-600">Roll No: {studentProfile.rollNo} | Class: {studentProfile.class}</p>
+              <h2 className="text-2xl font-bold text-gray-800">{studentProfile?.name || 'Student'}</h2>
+              <p className="text-gray-600">Roll No: {studentProfile?.studentId || 'N/A'} | Department: {studentProfile?.department || 'N/A'}</p>
             </div>
           </div>
           <div className="text-right">
             <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg">
-              <p className="text-sm">Overall Grade</p>
-              <p className="text-3xl font-bold">{studentProfile.overallGrade}</p>
+              <p className="text-sm">GPA</p>
+              <p className="text-3xl font-bold">{gpa?.gpa ? gpa.gpa.toFixed(2) : 'N/A'}</p>
             </div>
-            <p className="text-gray-600 mt-2">Attendance: {studentProfile.attendance}</p>
+            <p className="text-gray-600 mt-2">Credits: {gpa?.totalCredits || '0'}</p>
           </div>
         </div>
       </div>
@@ -176,11 +162,11 @@ const StudentDashboard = () => {
 
         {/* Progress Chart */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance Trend</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance by Subject</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={performanceTrend}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
+              <XAxis dataKey="subject" />
               <YAxis />
               <Tooltip />
               <Legend />
@@ -190,46 +176,46 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Performance Insights */}
+      {/* Performance Summary */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance Insights</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center mb-2">
-              <Target className="h-5 w-5 text-green-600 mr-2" />
-              <h4 className="font-semibold text-green-800">Strengths</h4>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance Summary</h3>
+        {performances.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center mb-2">
+                <Target className="h-5 w-5 text-green-600 mr-2" />
+                <h4 className="font-semibold text-green-800">Passed Subjects</h4>
+              </div>
+              <p className="text-2xl font-bold text-green-700">
+                {performances.filter(p => p.grade !== 'F').length} / {performances.length}
+              </p>
             </div>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• Excellent performance in Computer Science</li>
-              <li>• Consistent attendance above 85%</li>
-              <li>• Strong analytical skills</li>
-            </ul>
-          </div>
-          
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <div className="flex items-center mb-2">
-              <TrendingUp className="h-5 w-5 text-yellow-600 mr-2" />
-              <h4 className="font-semibold text-yellow-800">Improvements</h4>
+            
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="flex items-center mb-2">
+                <TrendingUp className="h-5 w-5 text-yellow-600 mr-2" />
+                <h4 className="font-semibold text-yellow-800">Highest Score</h4>
+              </div>
+              <p className="text-2xl font-bold text-yellow-700">
+                {Math.max(...performances.map(p => p.score || 0))}%
+              </p>
             </div>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• Mathematics scores improved by 6%</li>
-              <li>• Better participation in class</li>
-              <li>• Steady progress over last 3 months</li>
-            </ul>
-          </div>
-          
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="flex items-center mb-2">
-              <Award className="h-5 w-5 text-blue-600 mr-2" />
-              <h4 className="font-semibold text-blue-800">Goals</h4>
+            
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center mb-2">
+                <Award className="h-5 w-5 text-blue-600 mr-2" />
+                <h4 className="font-semibold text-blue-800">Average Grade</h4>
+              </div>
+              <p className="text-2xl font-bold text-blue-700">
+                {analytics?.averageScore ? `${Math.round(analytics.averageScore)}%` : 'N/A'}
+              </p>
             </div>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• Achieve A grade in all subjects</li>
-              <li>• Improve class rank to top 10</li>
-              <li>• Maintain 90%+ attendance</li>
-            </ul>
           </div>
-        </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <p>No performance data available yet</p>
+          </div>
+        )}
       </div>
     </div>
   );

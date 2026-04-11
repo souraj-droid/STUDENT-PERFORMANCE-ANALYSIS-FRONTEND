@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/student-performence-analysis/static/css/main.13bf7c7e.css",
+    "main.js": "/student-performence-analysis/static/js/main.35b83cc5.js",
+    "index.html": "/student-performence-analysis/index.html",
+    "main.13bf7c7e.css.map": "/student-performence-analysis/static/css/main.13bf7c7e.css.map",
+    "main.35b83cc5.js.map": "/student-performence-analysis/static/js/main.35b83cc5.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.13bf7c7e.css",
+    "static/js/main.35b83cc5.js"
+  ]
+}

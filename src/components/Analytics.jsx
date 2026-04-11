@@ -1,62 +1,88 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, TrendingUp, Target, BookOpen } from 'lucide-react';
 import ChartCard from './ChartCard';
+import { getAllStudents, getAtRiskStudents, getAnalyticsOverview, getCourses } from '../services/api';
 
-const Analytics = () => {
-  const [selectedStudent, setSelectedStudent] = useState('John Smith');
+const Analytics = ({ credentials, userRole }) => {
+  const [students, setStudents] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState('');
   const [timeFilter, setTimeFilter] = useState('monthly');
+  const [atRiskStudents, setAtRiskStudents] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sample student options
-  const students = [
-    'John Smith',
-    'Sarah Johnson',
-    'Mike Wilson',
-    'Emily Davis',
-    'James Brown'
-  ];
+  useEffect(() => {
+    fetchData();
+  }, [credentials]);
 
-  // Sample data for marks progression
-  const marksProgression = [
-    { month: 'Jan', math: 65, science: 70, english: 75, computer: 80 },
-    { month: 'Feb', math: 68, science: 72, english: 73, computer: 82 },
-    { month: 'Mar', math: 70, science: 75, english: 76, computer: 85 },
-    { month: 'Apr', math: 72, science: 73, english: 78, computer: 86 },
-    { month: 'May', math: 75, science: 78, english: 80, computer: 88 },
-    { month: 'Jun', math: 78, science: 80, english: 82, computer: 90 }
-  ];
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      if (userRole === 'teacher') {
+        const [studentsData, coursesData, atRiskData, analyticsData] = await Promise.all([
+          getAllStudents(credentials.username, credentials.password),
+          getCourses(credentials.username, credentials.password),
+          getAtRiskStudents(credentials.username, credentials.password),
+          getAnalyticsOverview(credentials.username, credentials.password)
+        ]);
+        setStudents(studentsData);
+        setCourses(coursesData);
+        setAtRiskStudents(atRiskData);
+        setAnalytics(analyticsData);
+        if (studentsData.length > 0) {
+          setSelectedStudent(studentsData[0].name || studentsData[0].studentId);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching analytics data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Sample data for subject comparison (Radar Chart)
-  const subjectComparison = [
-    { subject: 'Math', score: 78, fullMark: 100 },
-    { subject: 'Science', score: 80, fullMark: 100 },
-    { subject: 'English', score: 82, fullMark: 100 },
-    { subject: 'Computer', score: 90, fullMark: 100 },
-    { subject: 'History', score: 75, fullMark: 100 },
-    { subject: 'Geography', score: 77, fullMark: 100 }
-  ];
+  // Marks progression based on admission years
+  const admissionYears = [...new Set(students.map(s => s.admissionYear))].sort();
+  const marksProgression = admissionYears.map(year => ({
+    year: year.toString(),
+    average: analytics?.averageScore || 0
+  }));
 
-  // AI Recommendations based on performance
-  const recommendations = [
+  // Subject comparison based on courses
+  const subjectComparison = courses.slice(0, 6).map(course => ({
+    subject: course.courseName,
+    score: analytics?.averageScore || 0,
+    fullMark: 100
+  }));
+
+  // Recommendations based on at-risk students
+  const recommendations = atRiskStudents.length > 0 ? [
     {
-      icon: TrendingUp,
-      title: 'Improve practice in Algebra',
-      description: 'Focus on solving more algebraic problems to strengthen mathematical foundations',
-      priority: 'high'
-    },
-    {
-      icon: BookOpen,
-      title: 'Attend extra classes',
-      description: 'Join weekend mathematics workshops for additional support',
-      priority: 'medium'
-    },
-    {
-      icon: Target,
-      title: 'Increase attendance above 75%',
-      description: 'Regular attendance is crucial for consistent academic performance',
+      icon: AlertTriangle,
+      title: `${atRiskStudents.length} at-risk students need attention`,
+      description: 'These students require immediate intervention to improve their performance',
       priority: 'high'
     }
+  ] : [
+    {
+      icon: TrendingUp,
+      title: 'Overall performance is good',
+      description: analytics?.averageScore ? `Current average score is ${Math.round(analytics.averageScore)}%` : 'No performance data available',
+      priority: 'low'
+    }
   ];
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading analytics data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -66,23 +92,26 @@ const Analytics = () => {
         <p className="text-gray-600 mt-2">Detailed analysis of student academic performance</p>
       </div>
 
-      {/* Student Selection Panel */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Student
-            </label>
-            <select
-              value={selectedStudent}
-              onChange={(e) => setSelectedStudent(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {students.map(student => (
-                <option key={student} value={student}>{student}</option>
-              ))}
-            </select>
-          </div>
+      {/* Student Selection Panel - Only for teachers */}
+      {userRole === 'teacher' && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Student
+              </label>
+              <select
+                value={selectedStudent}
+                onChange={(e) => setSelectedStudent(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {students.map(student => (
+                  <option key={student.studentId} value={student.name || student.studentId}>
+                    {student.name} ({student.studentId})
+                  </option>
+                ))}
+              </select>
+            </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -112,34 +141,39 @@ const Analytics = () => {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
-      {/* Weak Subject Detection */}
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center">
-          <AlertTriangle className="h-5 w-5 text-red-600 mr-3" />
-          <div>
-            <p className="font-semibold text-red-800">Weak Subject Detected</p>
-            <p className="text-red-600">Mathematics performance below 40% threshold - requires immediate attention</p>
+      {/* Weak Subject Detection - Show at-risk students */}
+      {userRole === 'teacher' && atRiskStudents.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center mb-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 mr-3" />
+            <p className="font-semibold text-red-800">At-Risk Students Detected ({atRiskStudents.length})</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {atRiskStudents.map((student, index) => (
+              <div key={index} className="bg-white p-2 rounded border border-red-200">
+                <p className="text-sm font-medium text-gray-800">{student.name}</p>
+                <p className="text-xs text-gray-600">GPA: {student.gpa?.toFixed(2) || 'N/A'} | Failed: {student.failedCourses || 0}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Performance Visualization */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Marks Progression Chart */}
-        <ChartCard title="Marks Progression Over Time">
+        <ChartCard title="Average Score by Admission Year">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={marksProgression}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
+              <XAxis dataKey="year" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="math" stroke="#ef4444" strokeWidth={2} />
-              <Line type="monotone" dataKey="science" stroke="#3b82f6" strokeWidth={2} />
-              <Line type="monotone" dataKey="english" stroke="#10b981" strokeWidth={2} />
-              <Line type="monotone" dataKey="computer" stroke="#8b5cf6" strokeWidth={2} />
+              <Line type="monotone" dataKey="average" stroke="#4f46e5" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -200,23 +234,23 @@ const Analytics = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
         <div className="bg-white rounded-lg shadow-md p-4">
           <p className="text-sm text-gray-600">Average Score</p>
-          <p className="text-2xl font-bold text-gray-800">78.5%</p>
-          <p className="text-xs text-green-600">↑ 3.2% from last month</p>
+          <p className="text-2xl font-bold text-gray-800">{analytics?.averageScore ? `${Math.round(analytics.averageScore)}%` : 'N/A'}</p>
+          <p className="text-xs text-green-600">Overall average</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-600">Best Subject</p>
-          <p className="text-2xl font-bold text-gray-800">Computer</p>
-          <p className="text-xs text-gray-500">90% average</p>
+          <p className="text-sm text-gray-600">Pass Rate</p>
+          <p className="text-2xl font-bold text-gray-800">{analytics?.passRate ? `${Math.round(analytics.passRate)}%` : 'N/A'}</p>
+          <p className="text-xs text-gray-500">Students passing</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-600">Needs Improvement</p>
-          <p className="text-2xl font-bold text-red-600">Math</p>
-          <p className="text-xs text-gray-500">78% average</p>
+          <p className="text-sm text-gray-600">Total Students</p>
+          <p className="text-2xl font-bold text-gray-800">{students.length || '0'}</p>
+          <p className="text-xs text-gray-500">Enrolled students</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-600">Overall Trend</p>
-          <p className="text-2xl font-bold text-green-600">Positive</p>
-          <p className="text-xs text-gray-500">Improving steadily</p>
+          <p className="text-sm text-gray-600">At-Risk Students</p>
+          <p className="text-2xl font-bold text-red-600">{atRiskStudents.length || '0'}</p>
+          <p className="text-xs text-gray-500">Need attention</p>
         </div>
       </div>
     </div>
