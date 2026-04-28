@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
@@ -11,22 +11,44 @@ import Report from './components/Report';
 import Subjects from './components/Subjects';
 import Timetable from './components/Timetable';
 import AllStudents from './components/AllStudents';
+import { getToken, getStoredUser, logout } from './services/api';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [token, setToken] = useState('');
+  const [studentId, setStudentId] = useState(null);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    // Check for existing token on mount
+    const storedToken = getToken();
+    const storedUser = getStoredUser();
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUserRole(storedUser.role === 'ADMIN' ? 'teacher' : 'student');
+      setStudentId(storedUser.studentId);
+      setUserName(storedUser.studentName);
+      setIsAuthenticated(true);
+    }
+  }, []);
 
   const handleLogin = (loginData) => {
     setIsAuthenticated(true);
     setUserRole(loginData.role);
-    setCredentials({ username: loginData.username, password: loginData.password });
+    setToken(loginData.token);
+    setStudentId(loginData.studentId || null);
+    setUserName(loginData.userName || loginData.username);
   };
 
   const handleLogout = () => {
+    logout();
     setIsAuthenticated(false);
     setUserRole('');
+    setToken('');
+    setStudentId(null);
+    setUserName('');
     setActiveMenuItem('dashboard');
   };
 
@@ -38,32 +60,32 @@ const App = () => {
     if (userRole === 'teacher') {
       switch (activeMenuItem) {
         case 'dashboard':
-          return <TeacherDashboard credentials={credentials} />;
+          return <TeacherDashboard token={token} />;
         case 'add-student':
-          return <AddStudent credentials={credentials} />;
+          return <AddStudent token={token} />;
         case 'analytics':
-          return <Analytics credentials={credentials} userRole={userRole} />;
+          return <Analytics token={token} userRole={userRole} />;
         case 'reports':
-          return <Report credentials={credentials} userRole={userRole} />;
+          return <Report token={token} userRole={userRole} />;
         case 'students':
-          return <AllStudents credentials={credentials} />;
+          return <AllStudents token={token} />;
         default:
-          return <TeacherDashboard credentials={credentials} />;
+          return <TeacherDashboard token={token} />;
       }
     } else if (userRole === 'student') {
       switch (activeMenuItem) {
         case 'dashboard':
-          return <StudentDashboard credentials={credentials} />;
+          return <StudentDashboard token={token} studentId={studentId} />;
         case 'analytics':
-          return <Analytics credentials={credentials} userRole={userRole} />;
+          return <Analytics token={token} userRole={userRole} />;
         case 'reports':
-          return <Report credentials={credentials} userRole={userRole} />;
+          return <Report token={token} userRole={userRole} studentId={studentId} />;
         case 'subjects':
-          return <Subjects credentials={credentials} />;
+          return <Subjects token={token} />;
         case 'calendar':
-          return <Timetable credentials={credentials} />;
+          return <Timetable token={token} />;
         default:
-          return <StudentDashboard credentials={credentials} />;
+          return <StudentDashboard token={token} studentId={studentId} />;
       }
     }
     return null;
@@ -79,6 +101,7 @@ const App = () => {
         <Navbar 
           title="Student Performance Analytics System" 
           userRole={userRole}
+          userName={userName}
           onLogout={handleLogout}
         />
         <div className="flex">
@@ -87,7 +110,7 @@ const App = () => {
             onItemClick={handleMenuItemClick}
             userRole={userRole}
           />
-          <main className="flex-1">
+          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-auto">
             {renderMainContent()}
           </main>
         </div>

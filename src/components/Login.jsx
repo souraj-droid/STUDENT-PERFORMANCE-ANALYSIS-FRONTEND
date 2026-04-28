@@ -33,7 +33,14 @@ const Login = ({ onLogin }) => {
       if (result.success) {
         // Use the role from backend or fallback to selected role
         const finalRole = result.role || role;
-        onLogin({ role: finalRole, username, password, user: result.user });
+        onLogin({ 
+          role: finalRole, 
+          username, 
+          token: result.token, 
+          user: result.user, 
+          studentId: result.studentId,
+          userName: result.studentName
+        });
       } else {
         setApiError(result.error || 'Authentication failed');
       }

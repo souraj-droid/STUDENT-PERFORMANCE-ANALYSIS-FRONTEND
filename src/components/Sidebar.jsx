@@ -29,7 +29,7 @@ const Sidebar = ({ activeItem, onItemClick, userRole }) => {
   const menuItems = userRole === 'teacher' ? teacherMenuItems : studentMenuItems;
 
   return (
-    <div className="bg-gray-900 text-white w-64 min-h-screen">
+    <div className="bg-gray-900 text-white w-64 min-h-screen hidden md:block">
       <div className="p-4">
         <h2 className="text-lg font-semibold text-gray-300 mb-6">Menu</h2>
         <nav className="space-y-2">

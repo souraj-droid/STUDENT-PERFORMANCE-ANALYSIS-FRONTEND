@@ -4,7 +4,7 @@ import { AlertTriangle, TrendingUp, Target, BookOpen } from 'lucide-react';
 import ChartCard from './ChartCard';
 import { getAllStudents, getAtRiskStudents, getAnalyticsOverview, getCourses } from '../services/api';
 
-const Analytics = ({ credentials, userRole }) => {
+const Analytics = ({ token, userRole }) => {
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -15,17 +15,17 @@ const Analytics = ({ credentials, userRole }) => {
 
   useEffect(() => {
     fetchData();
-  }, [credentials]);
+  }, [token]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       if (userRole === 'teacher') {
         const [studentsData, coursesData, atRiskData, analyticsData] = await Promise.all([
-          getAllStudents(credentials.username, credentials.password),
-          getCourses(credentials.username, credentials.password),
-          getAtRiskStudents(credentials.username, credentials.password),
-          getAnalyticsOverview(credentials.username, credentials.password)
+          getAllStudents(token),
+          getCourses(token),
+          getAtRiskStudents(token),
+          getAnalyticsOverview(token)
         ]);
         setStudents(studentsData);
         setCourses(coursesData);

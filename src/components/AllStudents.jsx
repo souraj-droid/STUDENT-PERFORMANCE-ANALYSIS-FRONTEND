@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Users, Edit, Trash2 } from 'lucide-react';
 import { getAllStudents, deleteStudent } from '../services/api';
 
-const AllStudents = ({ credentials }) => {
+const AllStudents = ({ token }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStudents();
-  }, [credentials]);
+  }, [token]);
 
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const data = await getAllStudents(credentials.username, credentials.password);
+      const data = await getAllStudents(token);
       setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -24,7 +24,7 @@ const AllStudents = ({ credentials }) => {
 
   const handleDelete = async (studentId) => {
     if (window.confirm('Are you sure you want to delete this student?')) {
-      const success = await deleteStudent(credentials.username, credentials.password, studentId);
+      const success = await deleteStudent(token, studentId);
       if (success) {
         setStudents(students.filter(s => s.id !== studentId));
       } else {

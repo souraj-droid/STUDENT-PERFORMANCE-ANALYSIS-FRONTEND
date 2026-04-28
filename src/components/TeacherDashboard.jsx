@@ -6,7 +6,7 @@ import StudentTable from './StudentTable';
 import EditStudent from './EditStudent';
 import { getAllStudents, getAnalyticsOverview, deleteStudent, getCourses } from '../services/api';
 
-const TeacherDashboard = ({ credentials }) => {
+const TeacherDashboard = ({ token }) => {
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -15,15 +15,15 @@ const TeacherDashboard = ({ credentials }) => {
 
   useEffect(() => {
     fetchData();
-  }, [credentials]);
+  }, [token]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [studentsData, coursesData, analyticsData] = await Promise.all([
-        getAllStudents(credentials.username, credentials.password),
-        getCourses(credentials.username, credentials.password),
-        getAnalyticsOverview(credentials.username, credentials.password)
+        getAllStudents(token),
+        getCourses(token),
+        getAnalyticsOverview(token)
       ]);
       setStudents(studentsData);
       setCourses(coursesData);

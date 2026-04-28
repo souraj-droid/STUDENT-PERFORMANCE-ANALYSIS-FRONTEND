@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { User, Download, Printer, CheckCircle, XCircle, TrendingUp, Calendar, Plus, Save } from 'lucide-react';
 import StudentTable from './StudentTable';
-import { getAllStudents, createReport } from '../services/api';
+import { getAllStudents, createReport, getMyReport } from '../services/api';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const Report = ({ credentials, userRole }) => {
+const Report = ({ token, userRole, studentId }) => {
   const [view, setView] = useState('list'); // 'list', 'add', 'view'
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -21,6 +22,9 @@ const Report = ({ credentials, userRole }) => {
     subjects: []
   });
 
+  // Error state
+  const [errorMessage, setErrorMessage] = useState('');
+
   // Student: Report data
   const [reportData, setReportData] = useState(null);
 
@@ -30,12 +34,12 @@ const Report = ({ credentials, userRole }) => {
     } else {
       fetchStudentReport();
     }
-  }, [userRole, credentials]);
+  }, [userRole, token, studentId]);
 
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const data = await getAllStudents(credentials.username, credentials.password);
+      const data = await getAllStudents(token);
       setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -45,8 +49,21 @@ const Report = ({ credentials, userRole }) => {
   };
 
   const fetchStudentReport = async () => {
-    // This will call backend API when implemented
-    console.log('Fetching student report...');
+    setLoading(true);
+    try {
+      if (!studentId) {
+        console.error('No studentId available');
+        return;
+      }
+      const data = await getMyReport(token, studentId);
+      if (data) {
+        setReportData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching student report:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddSubject = () => {
@@ -82,18 +99,29 @@ const Report = ({ credentials, userRole }) => {
 
   const handleStudentSelect = (student) => {
     setSelectedStudent(student);
+    // Generate 6 random subjects
+    const randomSubjects = [
+      { subject: 'Mathematics', midterm: '', final: '', assignment: '', practical: '', total: '', grade: '' },
+      { subject: 'Physics', midterm: '', final: '', assignment: '', practical: '', total: '', grade: '' },
+      { subject: 'Chemistry', midterm: '', final: '', assignment: '', practical: '', total: '', grade: '' },
+      { subject: 'Computer Science', midterm: '', final: '', assignment: '', practical: '', total: '', grade: '' },
+      { subject: 'English', midterm: '', final: '', assignment: '', practical: '', total: '', grade: '' },
+      { subject: 'Economics', midterm: '', final: '', assignment: '', practical: '', total: '', grade: '' }
+    ];
     setReportForm({
       ...reportForm,
       studentId: student.id,
       name: `${student.firstName} ${student.lastName}`,
       rollNo: student.studentId,
       class: student.department,
-      academicYear: student.admissionYear + '-' + (student.admissionYear + 1)
+      academicYear: student.admissionYear + '-' + (student.admissionYear + 1),
+      subjects: randomSubjects
     });
   };
 
   const handleSubmitReport = async () => {
     setLoading(true);
+    setErrorMessage('');
     try {
       // Map form data to backend DTO format
       const reportData = {
@@ -107,7 +135,7 @@ const Report = ({ credentials, userRole }) => {
         subjects: reportForm.subjects.map(subject => ({
           subject: subject.subject,
           midterm: parseFloat(subject.midterm) || 0,
-          final: parseFloat(subject.final) || 0,
+          finalExam: parseFloat(subject.final) || 0,
           assignment: parseFloat(subject.assignment) || 0,
           practical: parseFloat(subject.practical) || 0,
           total: parseFloat(subject.total) || 0,
@@ -115,7 +143,8 @@ const Report = ({ credentials, userRole }) => {
         }))
       };
 
-      const result = await createReport(credentials.username, credentials.password, reportData);
+      console.log('Sending report data:', reportData);
+      const result = await createReport(token, reportData);
       if (result) {
         alert('Report saved successfully!');
         setView('list');
@@ -130,11 +159,11 @@ const Report = ({ credentials, userRole }) => {
           subjects: []
         });
       } else {
-        alert('Failed to save report. Please try again.');
+        setErrorMessage('Failed to save report. Please check the browser console for details.');
       }
     } catch (error) {
       console.error('Error saving report:', error);
-      alert('Error saving report. Please try again.');
+      setErrorMessage('Error saving report: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -381,6 +410,14 @@ const Report = ({ credentials, userRole }) => {
             ))}
           </div>
 
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              <p className="font-medium">Error:</p>
+              <p>{errorMessage}</p>
+              <p className="text-sm mt-1">Check browser console (F12 → Console) for more details.</p>
+            </div>
+          )}
+
           <div className="flex justify-end space-x-4">
             <button
               onClick={() => setView('list')}
@@ -390,10 +427,11 @@ const Report = ({ credentials, userRole }) => {
             </button>
             <button
               onClick={handleSubmitReport}
-              className="flex items-center px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              disabled={loading}
+              className="flex items-center px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400"
             >
               <Save className="h-4 w-4 mr-2" />
-              Save Report
+              {loading ? 'Saving...' : 'Save Report'}
             </button>
           </div>
         </div>
@@ -482,6 +520,23 @@ const Report = ({ credentials, userRole }) => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Detailed Marks Breakdown</h3>
           <StudentTable data={reportData.subjects} columns={marksColumns} />
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance Visualization</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={reportData.subjects}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="subject" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="midterm" fill="#3b82f6" name="Midterm" />
+              <Bar dataKey="final" fill="#10b981" name="Final" />
+              <Bar dataKey="assignment" fill="#f59e0b" name="Assignment" />
+              <Bar dataKey="practical" fill="#8b5cf6" name="Practical" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     );

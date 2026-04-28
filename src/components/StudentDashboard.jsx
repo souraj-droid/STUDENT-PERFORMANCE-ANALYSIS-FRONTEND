@@ -4,7 +4,7 @@ import { User, Award, TrendingUp, TrendingDown, BookOpen, Target } from 'lucide-
 import StudentTable from './StudentTable';
 import { getStudentProfile, getStudentPerformances, getStudentGPA, getStudentAnalyticsSummary } from '../services/api';
 
-const StudentDashboard = ({ credentials }) => {
+const StudentDashboard = ({ token, studentId }) => {
   const [studentProfile, setStudentProfile] = useState(null);
   const [performances, setPerformances] = useState([]);
   const [gpa, setGpa] = useState(null);
@@ -13,19 +13,19 @@ const StudentDashboard = ({ credentials }) => {
 
   useEffect(() => {
     fetchData();
-  }, [credentials]);
+  }, [token, studentId]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Use student ID from credentials (e.g., STU001 -> 1)
-      const studentId = parseInt(credentials.username.replace('STU', '')) || 1;
+      // Use the actual studentId passed from authentication
+      const actualStudentId = studentId || 1;
       
       const [profileData, performancesData, gpaData, analyticsData] = await Promise.all([
-        getStudentProfile(credentials.username, credentials.password, studentId),
-        getStudentPerformances(credentials.username, credentials.password, studentId),
-        getStudentGPA(credentials.username, credentials.password, studentId),
-        getStudentAnalyticsSummary(credentials.username, credentials.password, studentId)
+        getStudentProfile(token, actualStudentId),
+        getStudentPerformances(token, actualStudentId),
+        getStudentGPA(token, actualStudentId),
+        getStudentAnalyticsSummary(token, actualStudentId)
       ]);
       
       setStudentProfile(profileData);
@@ -68,13 +68,13 @@ const StudentDashboard = ({ credentials }) => {
   ];
 
   // Marks data from backend
-  const marksData = performances.map(perf => ({
+  const marksData = performances.length > 0 ? performances.map(perf => ({
     subject: perf.courseName || 'Unknown',
     marks: perf.score || 0,
     grade: perf.grade || 'N/A',
     attendance: 'N/A',
     status: perf.grade === 'F' ? 'Fail' : 'Pass'
-  }));
+  })) : [];
 
   // Columns for marks table
   const marksColumns = [
@@ -86,10 +86,10 @@ const StudentDashboard = ({ credentials }) => {
   ];
 
   // Performance trend data from actual performances
-  const performanceTrend = performances.map((perf, index) => ({
+  const performanceTrend = performances.length > 0 ? performances.map((perf, index) => ({
     subject: perf.courseName || `Subject ${index + 1}`,
     score: perf.score || 0
-  }));
+  })) : [];
 
   if (loading) {
     return (
@@ -163,16 +163,23 @@ const StudentDashboard = ({ credentials }) => {
         {/* Progress Chart */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance by Subject</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={performanceTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="subject" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="score" stroke="#4f46e5" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+          {performanceTrend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={performanceTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="subject" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="score" stroke="#4f46e5" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No performance data available yet</p>
+              <p className="text-sm mt-2">Ask your teacher to add marks</p>
+            </div>
+          )}
         </div>
       </div>
 

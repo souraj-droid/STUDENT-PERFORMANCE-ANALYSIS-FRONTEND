@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, MapPin, Calendar, Clock } from 'lucide-react';
 import { getCourses } from '../services/api';
 
-const Subjects = ({ credentials }) => {
+const Subjects = ({ token }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchCourses();
-  }, [credentials]);
+  }, [token]);
 
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      const data = await getCourses(credentials.username, credentials.password);
+      const data = await getCourses(token);
       setCourses(data);
     } catch (error) {
       console.error('Error fetching courses:', error);

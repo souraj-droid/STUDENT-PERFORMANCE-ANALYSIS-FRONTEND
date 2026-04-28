@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import { getTimetable } from '../services/api';
 
-const Timetable = ({ credentials }) => {
+const Timetable = ({ token }) => {
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -11,12 +11,12 @@ const Timetable = ({ credentials }) => {
 
   useEffect(() => {
     fetchTimetable();
-  }, [credentials]);
+  }, [token]);
 
   const fetchTimetable = async () => {
     setLoading(true);
     try {
-      const data = await getTimetable(credentials.username, credentials.password);
+      const data = await getTimetable(token);
       setTimetable(data);
     } catch (error) {
       console.error('Error fetching timetable:', error);

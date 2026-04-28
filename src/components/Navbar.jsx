@@ -1,7 +1,7 @@
 import React from 'react';
 import { GraduationCap, User, LogOut, Settings } from 'lucide-react';
 
-const Navbar = ({ title, userRole, onLogout }) => {
+const Navbar = ({ title, userRole, userName, onLogout }) => {
   const [showProfile, setShowProfile] = React.useState(false);
 
   return (
@@ -25,7 +25,7 @@ const Navbar = ({ title, userRole, onLogout }) => {
               <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
                 <User className="h-5 w-5 text-white" />
               </div>
-              <span className="ml-2 text-gray-700 capitalize">{userRole}</span>
+              <span className="ml-2 text-gray-700 capitalize">{userName || userRole}</span>
             </button>
 
             {/* Dropdown Menu */}

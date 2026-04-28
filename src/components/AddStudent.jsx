@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { UserPlus, Save, RotateCcw } from 'lucide-react';
 import { createStudent } from '../services/api';
 
-const AddStudent = ({ credentials }) => {
+const AddStudent = ({ token }) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -20,13 +20,60 @@ const AddStudent = ({ credentials }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.studentId.trim()) newErrors.studentId = 'Student ID is required';
-    if (!formData.department.trim()) newErrors.department = 'Department is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.admissionYear) newErrors.admissionYear = 'Admission year is required';
-    if (!formData.semester.trim()) newErrors.semester = 'Semester is required';
+    // First name validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters';
+    } else if (formData.firstName.trim().length > 50) {
+      newErrors.firstName = 'First name must not exceed 50 characters';
+    }
+    
+    // Last name validation
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters';
+    } else if (formData.lastName.trim().length > 50) {
+      newErrors.lastName = 'Last name must not exceed 50 characters';
+    }
+    
+    // Student ID validation
+    if (!formData.studentId.trim()) {
+      newErrors.studentId = 'Student ID is required';
+    } else if (formData.studentId.trim().length < 3) {
+      newErrors.studentId = 'Student ID must be at least 3 characters';
+    } else if (formData.studentId.trim().length > 20) {
+      newErrors.studentId = 'Student ID must not exceed 20 characters';
+    } else if (!/^[a-zA-Z0-9-]+$/.test(formData.studentId.trim())) {
+      newErrors.studentId = 'Student ID can only contain letters, numbers, and hyphens';
+    }
+    
+    // Department validation
+    if (!formData.department.trim()) {
+      newErrors.department = 'Department is required';
+    } else if (formData.department.trim().length < 2) {
+      newErrors.department = 'Department must be at least 2 characters';
+    }
+    
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    // Admission year validation
+    if (!formData.admissionYear) {
+      newErrors.admissionYear = 'Admission year is required';
+    } else if (formData.admissionYear < 2000 || formData.admissionYear > 2100) {
+      newErrors.admissionYear = 'Admission year must be between 2000 and 2100';
+    }
+    
+    // Semester validation
+    if (!formData.semester.trim()) {
+      newErrors.semester = 'Semester is required';
+    }
     
     return newErrors;
   };
@@ -54,7 +101,7 @@ const AddStudent = ({ credentials }) => {
     if (Object.keys(formErrors).length === 0) {
       setLoading(true);
       try {
-        const result = await createStudent(credentials.username, credentials.password, formData);
+        const result = await createStudent(token, formData);
         if (result) {
           setShowSuccess(true);
           setTimeout(() => {

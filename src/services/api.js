@@ -1,7 +1,15 @@
 const API_BASE_URL = 'http://localhost:8080/api';
 
-// Helper function to create headers with Basic Auth
-const getAuthHeaders = (username, password) => {
+// Helper function to create headers with JWT token
+const getAuthHeaders = (token) => {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+};
+
+// Helper function to create headers with Basic Auth (for login only)
+const getBasicAuthHeaders = (username, password) => {
   const auth = btoa(`${username}:${password}`);
   return {
     'Content-Type': 'application/json',
@@ -9,39 +17,68 @@ const getAuthHeaders = (username, password) => {
   };
 };
 
-// Authentication
+// Authentication with JWT
 export const authenticate = async (username, password) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-      method: 'GET',
-      headers: getAuthHeaders(username, password)
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
     });
     
     if (response.ok) {
-      const data = await response.json();
-      // Determine role based on username
-      let role = 'student';
-      if (username === 'admin') {
-        role = 'teacher'; // Admin maps to teacher role in frontend
+      const result = await response.json();
+      if (result.success && result.data) {
+        const data = result.data;
+        // Map backend role to frontend role
+        const role = data.role === 'ADMIN' ? 'teacher' : 'student';
+        
+        // Store token in localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data));
+        
+        return { 
+          success: true, 
+          user: data, 
+          role,
+          token: data.token,
+          studentId: data.studentId
+        };
       }
-      return { success: true, user: data, role };
-    } else {
-      return { success: false, error: 'Invalid credentials' };
     }
+    return { success: false, error: 'Invalid credentials' };
   } catch (error) {
     console.error('Authentication error:', error);
     return { success: false, error: 'Connection failed' };
   }
 };
 
+// Logout
+export const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+};
+
+// Get stored token
+export const getToken = () => {
+  return localStorage.getItem('token');
+};
+
+// Get stored user
+export const getStoredUser = () => {
+  const userStr = localStorage.getItem('user');
+  return userStr ? JSON.parse(userStr) : null;
+};
+
 // Admin endpoints
-export const getAllStudents = async (username, password) => {
+export const getAllStudents = async (token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/students`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : [];
     }
     return [];
   } catch (error) {
@@ -50,15 +87,16 @@ export const getAllStudents = async (username, password) => {
   }
 };
 
-export const createStudent = async (username, password, studentData) => {
+export const createStudent = async (token, studentData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/students`, {
       method: 'POST',
-      headers: getAuthHeaders(username, password),
+      headers: getAuthHeaders(token),
       body: JSON.stringify(studentData)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
@@ -67,15 +105,16 @@ export const createStudent = async (username, password, studentData) => {
   }
 };
 
-export const updateStudent = async (username, password, studentId, studentData) => {
+export const updateStudent = async (token, studentId, studentData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/students/${studentId}`, {
       method: 'PUT',
-      headers: getAuthHeaders(username, password),
+      headers: getAuthHeaders(token),
       body: JSON.stringify(studentData)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
@@ -84,11 +123,11 @@ export const updateStudent = async (username, password, studentId, studentData) 
   }
 };
 
-export const deleteStudent = async (username, password, studentId) => {
+export const deleteStudent = async (token, studentId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/students/${studentId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     return response.ok;
   } catch (error) {
@@ -97,13 +136,14 @@ export const deleteStudent = async (username, password, studentId) => {
   }
 };
 
-export const getAnalyticsOverview = async (username, password) => {
+export const getAnalyticsOverview = async (token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/analytics/overview`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
@@ -112,13 +152,14 @@ export const getAnalyticsOverview = async (username, password) => {
   }
 };
 
-export const getAtRiskStudents = async (username, password) => {
+export const getAtRiskStudents = async (token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/analytics/at-risk`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : [];
     }
     return [];
   } catch (error) {
@@ -128,13 +169,14 @@ export const getAtRiskStudents = async (username, password) => {
 };
 
 // Student endpoints
-export const getStudentProfile = async (username, password, studentId) => {
+export const getStudentProfile = async (token, studentId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/student/profile/${studentId}`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
@@ -143,13 +185,14 @@ export const getStudentProfile = async (username, password, studentId) => {
   }
 };
 
-export const getStudentPerformances = async (username, password, studentId) => {
+export const getStudentPerformances = async (token, studentId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/student/performances/${studentId}`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : [];
     }
     return [];
   } catch (error) {
@@ -158,13 +201,14 @@ export const getStudentPerformances = async (username, password, studentId) => {
   }
 };
 
-export const getStudentGPA = async (username, password, studentId) => {
+export const getStudentGPA = async (token, studentId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/student/gpa/${studentId}`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
@@ -173,13 +217,14 @@ export const getStudentGPA = async (username, password, studentId) => {
   }
 };
 
-export const getStudentAnalyticsSummary = async (username, password, studentId) => {
+export const getStudentAnalyticsSummary = async (token, studentId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/student/analytics/summary/${studentId}`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
@@ -188,13 +233,14 @@ export const getStudentAnalyticsSummary = async (username, password, studentId) 
   }
 };
 
-export const getCourses = async (username, password) => {
+export const getCourses = async (token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/courses`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : [];
     }
     return [];
   } catch (error) {
@@ -203,13 +249,14 @@ export const getCourses = async (username, password) => {
   }
 };
 
-export const getTimetable = async (username, password) => {
+export const getTimetable = async (token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/timetable`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : [];
     }
     return [];
   } catch (error) {
@@ -218,15 +265,44 @@ export const getTimetable = async (username, password) => {
   }
 };
 
-export const createReport = async (username, password, reportData) => {
+export const createReport = async (token, reportData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/reports`, {
       method: 'POST',
-      headers: getAuthHeaders(username, password),
+      headers: getAuthHeaders(token),
       body: JSON.stringify(reportData)
     });
-    if (response.ok) {
-      return await response.json();
+    
+    // Log response status and headers
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    // Get raw text first to see what we're getting
+    const rawText = await response.text();
+    console.log('Raw response length:', rawText.length);
+    console.log('Raw response (first 500 chars):', rawText.substring(0, 500));
+    console.log('Raw response (last 500 chars):', rawText.substring(Math.max(0, rawText.length - 500)));
+    
+    // Try to parse as JSON
+    let result;
+    try {
+      result = JSON.parse(rawText);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Full raw response:', rawText);
+      return null;
+    }
+    
+    console.log('Parsed response:', result);
+    if (response.ok && result.success) {
+      return result.data;
+    }
+    // Log error details
+    if (result.errors) {
+      console.error('Validation errors:', result.errors);
+    }
+    if (result.message) {
+      console.error('Error message:', result.message);
     }
     return null;
   } catch (error) {
@@ -235,13 +311,14 @@ export const createReport = async (username, password, reportData) => {
   }
 };
 
-export const getStudentReports = async (username, password, studentId) => {
+export const getStudentReports = async (token, studentId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/reports/${studentId}`, {
-      headers: getAuthHeaders(username, password)
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
@@ -250,13 +327,14 @@ export const getStudentReports = async (username, password, studentId) => {
   }
 };
 
-export const getMyReport = async (username, password) => {
+export const getMyReport = async (token, studentId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/student/reports`, {
-      headers: getAuthHeaders(username, password)
+    const response = await fetch(`${API_BASE_URL}/student/reports?studentId=${studentId}`, {
+      headers: getAuthHeaders(token)
     });
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      return result.success ? result.data : null;
     }
     return null;
   } catch (error) {
