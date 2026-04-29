@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.css": "/student-performence-analysis/static/css/main.2f04fd3e.css",
-    "main.js": "/student-performence-analysis/static/js/main.b8bc0097.js",
-    "index.html": "/student-performence-analysis/index.html",
-    "main.2f04fd3e.css.map": "/student-performence-analysis/static/css/main.2f04fd3e.css.map",
-    "main.b8bc0097.js.map": "/student-performence-analysis/static/js/main.b8bc0097.js.map"
+    "main.css": "/STUDENT-PERFORMANCE-ANALYSIS-FRONTEND/static/css/main.2f04fd3e.css",
+    "main.js": "/STUDENT-PERFORMANCE-ANALYSIS-FRONTEND/static/js/main.b8bc0097.js",
+    "index.html": "/STUDENT-PERFORMANCE-ANALYSIS-FRONTEND/index.html",
+    "main.2f04fd3e.css.map": "/STUDENT-PERFORMANCE-ANALYSIS-FRONTEND/static/css/main.2f04fd3e.css.map",
+    "main.b8bc0097.js.map": "/STUDENT-PERFORMANCE-ANALYSIS-FRONTEND/static/js/main.b8bc0097.js.map"
   },
   "entrypoints": [
     "static/css/main.2f04fd3e.css",
