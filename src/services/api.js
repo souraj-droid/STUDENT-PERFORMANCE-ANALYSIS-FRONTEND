@@ -1,19 +1,10 @@
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = 'https://student-performance-analysis-backend-1.onrender.com/api';
 
 // Helper function to create headers with JWT token
 const getAuthHeaders = (token) => {
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`
-  };
-};
-
-// Helper function to create headers with Basic Auth (for login only)
-const getBasicAuthHeaders = (username, password) => {
-  const auth = btoa(`${username}:${password}`);
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Basic ${auth}`
   };
 };
 
